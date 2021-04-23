@@ -1,4 +1,4 @@
-from flask import Flask,render_template,request,flash,make_response,jsonify,redirect,session,json
+from flask import Flask,render_template,request,flash,make_response,jsonify,redirect,session,json,abort
 from flask_sqlalchemy import SQLAlchemy
 import pymysql
 import random,time
@@ -6,6 +6,7 @@ import base64
 import hmac
 import requests
 from furl import furl
+from werkzeug.utils import secure_filename
 app = Flask(__name__)
 
 
@@ -28,8 +29,10 @@ class new_user(db.Model):
 
 class urls(db.Model):
     __tablename__='urls'
+    id=db.Column(db.Integer,primary_key=True)
     username=db.Column(db.String(16),unique=True)
     url=db.Column(db.String(50))
+    imagename=db.Column(db.String(16))
 
 
 
@@ -164,6 +167,9 @@ def token():
 
 
 
+
+
+
 @app.route('/register',methods=['GET','POST'])
 def register():
     print(request.method)
@@ -193,7 +199,12 @@ def api():
 
         ###这里修改成用户数据
         if request.args.get('scope')=='read':
-            return "hello,%s" % (username) #返回用户数据
+            dict = {}
+            datas = urls.query.filter_by(username=username)
+            for i in datas:
+                dict[i.imagename] = 'http://localhost:5000/' + i.url
+            return jsonify({'user':username,'data':json.dumps(dict)})
+        #只读的话获取只能获取看的
         else:
             return '图床页面' #返回图床界面，此时相当于用户登陆
 
@@ -207,22 +218,54 @@ def home(user):
     if session.get(user)==None:
 
         return redirect('/login')
-    if session[user]==user:
-        url1=urls.query.join(new_user,new_user.name==urls.username).filter(urls.username==user)
+    if session[user]==user or request.method=='POST':
+        if request.method=='GET':
+            url1=urls.query.join(new_user,new_user.name==urls.username).filter(urls.username==user)
+            dict={}
+            print(url1)
+        # for i in url1:
+        #     temp={i.username:i.url}
+        #     dict.update(temp)
+        # return jsonify({
+        #     "username":user,
+        #     "data":json.dumps(dict)
+        # })
+            return render_template('hostimage.html',user=user)
+        else:
+            obj = request.files.get('filename')
+            print(obj)
+            num = urls.query.filter_by(username=user).count()
+            print(num)
+            file_path = 'files/%s%s' % (user,num)+obj.filename
+            obj.save(file_path)
+            url = urls(username=user, url=file_path,imagename=obj.filename)
+            db.session.add(url)
+            db.session.commit()
+            uri="http://localhost:5000/%s/data"%(user)
+            return redirect(uri)
+
+
+@app.route('/<user>/data',methods=['POST','GET'])
+def data(user):
+    print(session.get(user))
+    if session.get(user)==user:
         dict={}
-        for i in url1:
-            temp={i.username:i.url}
-            dict.update(temp)
-        return jsonify({
-            "username":user,
-            "data":json.dumps(dict)
-        })
-
-
+        datas=urls.query.filter_by(username=user)
+        for i in datas:
+            dict[i.imagename]='http://localhost:5000/'+i.url
+        return json.dumps({"user":user,"data":json.dumps(dict)})
+    else:
+        abort(403)
 
     ####接下来考虑连接外键和数据库的事情
 
-
+@app.route('/files/<data>')
+def image(data):
+    imagepath='files/%s'%(data)
+    image_data = open(imagepath, "rb").read()
+    resp=make_response(image_data)
+    resp.headers['Content-Type']='image/jpg'
+    return resp
 
 
 
