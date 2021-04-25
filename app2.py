@@ -11,7 +11,7 @@ app = Flask(__name__)
 
 
 key  = "JD98Dskw=23njQndW9D"#用于加密的key
-app.config['SQLALCHEMY_DATABASE_URI']='mysql+pymysql://root:leh20020929@localhost:3306/demo2'
+app.config['SQLALCHEMY_DATABASE_URI']='databaseurl'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
 db=SQLAlchemy(app)
 app.config['SECRET_KEY']=random._urandom(24) ###对一些hash函数有影响
