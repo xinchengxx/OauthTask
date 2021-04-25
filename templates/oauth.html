@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<form action="/oauth" method="post">
+   <label >用户名:</label><input type="text" name="username"><br>
+    <label >密码:</label><input type="password" name="password"> <br>
+    <input type="radio" name="scope" value="read">只读 <br>
+    <input type="radio" name="scope"  value="write">可写 <br>
+    <input type="text" name="time">时间(单位为s) <br>
+    <input type="submit" value="统一授权"> <br>
+</form>
+</body>
+</html>

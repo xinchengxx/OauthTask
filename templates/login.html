@@ -10,5 +10,15 @@
     <label >密码:</label><input type="password" name="password"> <br>
     <input type="submit" value="提交"> <br>
 </form>
+     {% for messagez in get_flashed_messages() %}
+       <div class="flash">{{ message }}</div>
+    {% endfor %}
+    <button id="btn">注册按钮</button>
 </body>
+<script type="text/javascript">
+    var btn=document.getElementById('btn')
+    btn.onclick=function(){
+        location.href='http://127.0.0.1:5000/register'
+    }
+</script>
 </html>

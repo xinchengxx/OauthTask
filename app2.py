@@ -10,7 +10,6 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 
 
-
 key  = "JD98Dskw=23njQndW9D"#用于加密的key
 app.config['SQLALCHEMY_DATABASE_URI']='mysql+pymysql://root:leh20020929@localhost:3306/demo2'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
@@ -30,11 +29,9 @@ class new_user(db.Model):
 class urls(db.Model):
     __tablename__='urls'
     id=db.Column(db.Integer,primary_key=True)
-    username=db.Column(db.String(16),unique=True)
+    username=db.Column(db.String(16))
     url=db.Column(db.String(50))
     imagename=db.Column(db.String(16))
-
-
 
 
 
@@ -43,6 +40,8 @@ def gen_auth_code(client_id):
     auth_code[str(code)]=client_id
     return code
 
+
+###生成token的方式
 def gen_token(uid:str,expire=3600):
     uid_byte=uid.encode('utf-8')
     time_s=str(time.time()+expire) #过期时间
@@ -67,11 +66,18 @@ def verify_token(token):
     if sha1!=token_list[2]:
         return False
     return True
-###生成token的方式
 
-token = gen_token('leh', 3600)
-print(token)
-print(verify_token(token))
+#### 生成一个指定长度的字符串
+def generate_random_str(randomlength=16):
+    random_str = ''
+    base_str = 'ABCDEFGHIGKLMNOPQRSTUVWXYZabcdefghigklmnopqrstuvwxyz0123456789'
+    length = len(base_str) - 1
+    for i in range(randomlength):
+        random_str += base_str[random.randint(0, length)]
+    return random_str
+
+
+
 
 @app.route('/login',methods=['GET','POST'])
 def login():
@@ -118,13 +124,15 @@ def oauth():
             username=request.form.get('username')
             pw=request.form.get('password')
             user=new_user.query.filter_by(name=username).first()
+            if user==None:
+                return '用户名不存在'
             if user.passwd!=pw:
                 return 'error'
             else:
             #是选择界面
                 val=request.form.get('scope')
                 time=request.form.get('time') ###get到的不知道是数字还是字符串
-                client_id=temp_clients.pop()
+                client_id=temp_clients[-1]
                 code = gen_auth_code(client_id)
                 redirect_uri=auth_redirect_uri.get(client_id)+'?scope=%s&time=%s&code=%s&user=%s' %(val,time,code,username)
                 return redirect(redirect_uri)
@@ -167,9 +175,6 @@ def token():
 
 
 
-
-
-
 @app.route('/register',methods=['GET','POST'])
 def register():
     print(request.method)
@@ -186,7 +191,10 @@ def register():
             user=new_user(name=username,passwd=passwd1)
             db.session.add(user)
             db.session.commit()
-            return '注册成功,欢迎你,%s ' %(username)
+            return '''
+            <div>注册成功,欢迎你%s</div>
+            <a href="http://localhost:5000/login">点我登陆QWQ</a> 
+            '''%(username)
     else:
         return render_template('register.html')
 
@@ -197,7 +205,7 @@ def api():
     token=request.args.get('token')
     if verify_token(token):
 
-        ###这里修改成用户数据
+        ##
         if request.args.get('scope')=='read':
             dict = {}
             datas = urls.query.filter_by(username=username)
@@ -257,7 +265,7 @@ def data(user):
     else:
         abort(403)
 
-    ####接下来考虑连接外键和数据库的事情
+
 
 @app.route('/files/<data>')
 def image(data):
@@ -266,6 +274,26 @@ def image(data):
     resp=make_response(image_data)
     resp.headers['Content-Type']='image/jpg'
     return resp
+
+@app.route('/appregis',methods=['GET','POST'])
+def appregi():
+    if request.method=='GET':
+        return render_template('appregis.html')
+    else:
+        callbackuri=request.form.get('callback')
+        client_id=generate_random_str(5)
+        client_secret=generate_random_str(12)
+        clients[client_id]=client_secret
+        auth_redirect_uri[client_id]=callbackuri
+        return '''
+        注册成功\n
+        您的client_id=%s
+        您的client_secret=%s
+        ''' %(client_id,client_secret)
+
+
+
+
 
 
 
